@@ -238,6 +238,45 @@ impl NamedFile {
         Self::from_file(file, path)
     }
 
+    /// Attempt to open precompressed version of path asynchronously.
+    /// 
+    /// # Examples
+    /// ```
+    /// use actix_files::NamedFile;
+    /// use actix_web::http::header::ContentEncoding;
+    /// 
+    /// # async fn open() {
+    /// // file1 should be exactly the same as file2 if foo.txt.br exist.
+    /// let file1 = NamedFile::open_compressed("foo.txt", encodings: &vec![ContentEncoding::Brotli, ContentEncoding::Gzip]).await.unwrap();
+    /// let file2 = NamedFile::open_async("foo.txt.br").await.unwrap().set_content_encoding(ContentEncoding::Brotli);
+    /// # }
+    /// ```
+    pub async fn open_compressed<P: AsRef<Path>>(path: P, encodings: &[ContentEncoding]) -> io::Result<NamedFile> {
+        use std::ffi::OsString;
+        for encoding in encodings {
+            let mut extended_path = OsString::from(path.as_ref().as_os_str());
+            extended_path.push(".");
+            extended_path.push(encoding.as_str());
+            let open_result = {
+                #[cfg(not(feature = "experimental-io-uring"))]
+                {
+                    File::open(&extended_path)
+                }
+    
+                #[cfg(feature = "experimental-io-uring")]
+                {
+                    File::open(&extended_path).await
+                }
+            };
+            if let Ok(file) = open_result {
+                let named_file = Self::from_file(file, path)?;
+                return Ok(named_file.set_content_encoding(encoding.clone()))
+            }
+        }
+
+        Self::open_async(path).await
+    }
+
     /// Returns reference to the underlying file object.
     #[inline]
     pub fn file(&self) -> &File {

@@ -5,7 +5,7 @@ use actix_web::{
     dev::{self, Service, ServiceRequest, ServiceResponse},
     error::Error,
     guard::Guard,
-    http::{header, Method},
+    http::{header::{self, ContentEncoding}, Method},
     HttpResponse,
 };
 use futures_core::future::LocalBoxFuture;
@@ -39,6 +39,7 @@ pub struct FilesServiceInner {
     pub(crate) file_flags: named::Flags,
     pub(crate) guards: Option<Rc<dyn Guard>>,
     pub(crate) hidden_files: bool,
+    pub(crate) use_precompressed: Vec<ContentEncoding>
 }
 
 impl fmt::Debug for FilesServiceInner {
@@ -144,6 +145,17 @@ impl Service<ServiceRequest> for FilesService {
                 return this.handle_err(err, req).await;
             }
 
+            let mut available_encoding: Vec<ContentEncoding> = Vec::new();
+            let accept_encoding = req.headers().get(header::ACCEPT_ENCODING);
+            if let Some(accept_encoding) = accept_encoding {
+                let accept_encoding = accept_encoding.to_str().unwrap_or("");
+                for encoding in &this.use_precompressed {
+                    if accept_encoding.contains(encoding.as_str()) {
+                        available_encoding.push(encoding.clone());
+                    }
+                }
+            }
+            
             if path.is_dir() {
                 if this.redirect_to_slash
                     && !req.path().ends_with('/')
@@ -161,7 +173,7 @@ impl Service<ServiceRequest> for FilesService {
                 match this.index {
                     Some(ref index) => {
                         let named_path = path.join(index);
-                        match NamedFile::open_async(named_path).await {
+                        match NamedFile::open_compressed(named_path, &available_encoding).await {
                             Ok(named_file) => Ok(this.serve_named_file(req, named_file)),
                             Err(_) if this.show_index => Ok(this.show_index(req, path)),
                             Err(err) => this.handle_err(err, req).await,
@@ -174,7 +186,7 @@ impl Service<ServiceRequest> for FilesService {
                     )),
                 }
             } else {
-                match NamedFile::open_async(&path).await {
+                match NamedFile::open_compressed(&path, &available_encoding).await {
                     Ok(mut named_file) => {
                         if let Some(ref mime_override) = this.mime_override {
                             let new_disposition =

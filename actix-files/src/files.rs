@@ -13,7 +13,7 @@ use actix_web::{
     },
     error::Error,
     guard::Guard,
-    http::header::DispositionType,
+    http::header::{DispositionType, ContentEncoding},
     HttpRequest,
 };
 use futures_core::future::LocalBoxFuture;
@@ -50,6 +50,7 @@ pub struct Files {
     use_guards: Option<Rc<dyn Guard>>,
     guards: Vec<Rc<dyn Guard>>,
     hidden_files: bool,
+    use_precompressed: Vec<ContentEncoding>,
 }
 
 impl fmt::Debug for Files {
@@ -74,6 +75,7 @@ impl Clone for Files {
             use_guards: self.use_guards.clone(),
             guards: self.guards.clone(),
             hidden_files: self.hidden_files,
+            use_precompressed: self.use_precompressed.clone(),
         }
     }
 }
@@ -120,6 +122,7 @@ impl Files {
             use_guards: None,
             guards: Vec::new(),
             hidden_files: false,
+            use_precompressed: Vec::new(),
         }
     }
 
@@ -226,6 +229,26 @@ impl Files {
     /// Default is false (but will default to true in a future version).
     pub fn prefer_utf8(mut self, value: bool) -> Self {
         self.file_flags.set(named::Flags::PREFER_UTF8, value);
+        self
+    }
+
+    /// Specifies how to serve pre compressed files.
+    /// 
+    /// Default is empty(not to serve).
+    /// Priority of which encoding to be serving first is determined by the order of the vec,
+    /// first value will be prefer if client accept.
+    /// 
+    /// # Examples
+    /// ```
+    /// use actix_files::Files;
+    /// use actix_web::http::header::ContentEncoding;
+    /// 
+    /// let files_service = Files::new("/", "./static")
+    ///     .use_precompressed(vec![ContentEncoding::Brotli, ContentEncoding::Gzip]);
+    /// ```
+    pub fn use_precompressed(mut self, value: Vec<ContentEncoding>) -> Self {
+        self.use_precompressed = value;
+        
         self
     }
 
@@ -372,6 +395,7 @@ impl ServiceFactory<ServiceRequest> for Files {
             file_flags: self.file_flags,
             guards: self.use_guards.clone(),
             hidden_files: self.hidden_files,
+            use_precompressed: self.use_precompressed.clone(),
         };
 
         if let Some(ref default) = *self.default.borrow() {
