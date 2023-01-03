@@ -39,7 +39,7 @@ pub struct FilesServiceInner {
     pub(crate) file_flags: named::Flags,
     pub(crate) guards: Option<Rc<dyn Guard>>,
     pub(crate) hidden_files: bool,
-    pub(crate) use_precompressed: Vec<ContentEncoding>
+    pub(crate) use_precompressed: Vec<(ContentEncoding, &'static str)>
 }
 
 impl fmt::Debug for FilesServiceInner {
@@ -145,12 +145,12 @@ impl Service<ServiceRequest> for FilesService {
                 return this.handle_err(err, req).await;
             }
 
-            let mut available_encoding: Vec<ContentEncoding> = Vec::new();
+            let mut available_encoding: Vec<(ContentEncoding, &'static str)> = Vec::new();
             let accept_encoding = req.headers().get(header::ACCEPT_ENCODING);
             if let Some(accept_encoding) = accept_encoding {
                 let accept_encoding = accept_encoding.to_str().unwrap_or("");
                 for encoding in &this.use_precompressed {
-                    if accept_encoding.contains(encoding.as_str()) {
+                    if accept_encoding.contains(encoding.0.as_str()) {
                         available_encoding.push(encoding.clone());
                     }
                 }

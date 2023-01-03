@@ -50,7 +50,7 @@ pub struct Files {
     use_guards: Option<Rc<dyn Guard>>,
     guards: Vec<Rc<dyn Guard>>,
     hidden_files: bool,
-    use_precompressed: Vec<ContentEncoding>,
+    use_precompressed: Vec<(ContentEncoding, &'static str)>,
 }
 
 impl fmt::Debug for Files {
@@ -244,9 +244,12 @@ impl Files {
     /// use actix_web::http::header::ContentEncoding;
     /// 
     /// let files_service = Files::new("/", "./static")
-    ///     .use_precompressed(vec![ContentEncoding::Brotli, ContentEncoding::Gzip]);
+    ///     .use_precompressed(vec![
+    ///         (ContentEncoding::Brotli, ".br"), 
+    ///         (ContentEncoding::Gzip, ".gz")
+    ///     ]);
     /// ```
-    pub fn use_precompressed(mut self, value: Vec<ContentEncoding>) -> Self {
+    pub fn use_precompressed(mut self, value: Vec<(ContentEncoding, &'static str)>) -> Self {
         self.use_precompressed = value;
         
         self

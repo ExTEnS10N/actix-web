@@ -10,7 +10,10 @@ use actix_files::Files;
 use actix_web::http::header::ContentEncoding;
 
 let files_service = Files::new("/", "./static")
-    .use_precompressed(vec![ContentEncoding::Brotli, ContentEncoding::Gzip]);
+    .use_precompressed(vec![
+        (ContentEncoding::Brotli, ".br"),
+        (ContentEncoding::Gzip, ".gz")
+    ]);
 ```
 
 use NamedFile
@@ -20,8 +23,11 @@ use actix_web::http::header::ContentEncoding;
 
 # async fn open() {
 // file1 should be exactly the same as file2 if foo.txt.br exist.
-let file1 = NamedFile::open_compressed("foo.txt", encodings: &vec![ContentEncoding::Brotli, ContentEncoding::Gzip]).await.unwrap();
-let file2 = NamedFile::open_async("foo.txt.br").await.unwrap()e.set_content_encoding(ContentEncoding::Brotli);
+let file1 = NamedFile::open_compressed("foo.txt", encodings: &vec![
+    (ContentEncoding::Brotli, ".br"),
+    (ContentEncoding::Gzip, ".gz")
+]).await.unwrap();
+let file2 = NamedFile::open_async("foo.txt.br").await.unwrap().set_content_encoding(ContentEncoding::Brotli);
 # }
 ```
 

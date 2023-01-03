@@ -247,16 +247,18 @@ impl NamedFile {
     /// 
     /// # async fn open() {
     /// // file1 should be exactly the same as file2 if foo.txt.br exist.
-    /// let file1 = NamedFile::open_compressed("foo.txt", encodings: &vec![ContentEncoding::Brotli, ContentEncoding::Gzip]).await.unwrap();
+    /// let file1 = NamedFile::open_compressed("foo.txt", encodings: &vec![
+    ///     (ContentEncoding::Brotli, ".br"),
+    ///     (ContentEncoding::Gzip, ".gz")
+    /// ]).await.unwrap();
     /// let file2 = NamedFile::open_async("foo.txt.br").await.unwrap().set_content_encoding(ContentEncoding::Brotli);
     /// # }
     /// ```
-    pub async fn open_compressed<P: AsRef<Path>>(path: P, encodings: &[ContentEncoding]) -> io::Result<NamedFile> {
+    pub async fn open_compressed<P: AsRef<Path>>(path: P, encodings: &[(ContentEncoding, &'static str)]) -> io::Result<NamedFile> {
         use std::ffi::OsString;
         for encoding in encodings {
             let mut extended_path = OsString::from(path.as_ref().as_os_str());
-            extended_path.push(".");
-            extended_path.push(encoding.as_str());
+            extended_path.push(encoding.1);
             let open_result = {
                 #[cfg(not(feature = "experimental-io-uring"))]
                 {
@@ -270,7 +272,7 @@ impl NamedFile {
             };
             if let Ok(file) = open_result {
                 let named_file = Self::from_file(file, path)?;
-                return Ok(named_file.set_content_encoding(encoding.clone()))
+                return Ok(named_file.set_content_encoding(encoding.0.clone()))
             }
         }
 
