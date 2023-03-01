@@ -110,6 +110,7 @@
 )]
 #![doc(html_logo_url = "https://actix.rs/img/logo.png")]
 #![doc(html_favicon_url = "https://actix.rs/favicon.ico")]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 pub use actix_http::body;
 
@@ -139,7 +140,7 @@ pub mod http {
 }
 
 pub use self::builder::ClientBuilder;
-pub use self::client::{Client, Connector};
+pub use self::client::{Client, Connect, Connector};
 pub use self::connect::{BoxConnectorService, BoxedSocket, ConnectRequest, ConnectResponse};
 pub use self::frozen::{FrozenClientRequest, FrozenSendBuilder};
 pub use self::request::ClientRequest;
